@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-config
+data:
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  OTLP_TRACING_ENDPOINT: http://tempo.observability.svc.cluster.local:4318/v1/traces
+  TRACING_SAMPLING: "1.0"          # lower it (e.g. 0.1) in prod
+---
+# DEV ONLY placeholder. In real environments create this Secret out of band
+# (External Secrets Operator / Sealed Secrets / Vault) and delete this object.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+type: Opaque
+stringData:
+  DB_USER: app
+  DB_PASSWORD: app
+---
+# DEV ONLY placeholder (same note as above). In production set JWT_ISSUER_URI on the gateway instead of a secret.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jwt-secret
+type: Opaque
+stringData:
+  JWT_SECRET: dev-only-secret-change-me-0123456789abcdef

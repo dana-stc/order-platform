@@ -1,0 +1,23 @@
+# GitOps: ArgoCD keeps the cluster in sync with k8s/overlays/prod.
+# The CD workflow only commits new image tags to this repo; ArgoCD does the actual deploy.
+#   kubectl apply -n argocd -f argocd/application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: order-platform
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dana-stc/order-platform.git   # <- your repository
+    targetRevision: main
+    path: k8s/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: order-platform
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,57 @@
+groups:
+  - name: order-platform
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~"services-.*"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.instance }} is not reachable"
+
+      - alert: HighHttp5xxRate
+        expr: |
+          sum by (application) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+            / sum by (application) (rate(http_server_requests_seconds_count[5m])) > 0.05
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.application }}: more than 5% of requests fail (SLO: 99.5% success)"
+
+      - alert: OrderApiSlow
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application="order-service",uri="/orders"}[5m]))) > 0.5
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "POST /orders p95 latency above 500 ms"
+
+      - alert: OutboxBacklog
+        expr: outbox_pending > 100
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.application }}: {{ $value }} outbox rows are not being published (Kafka down or publisher stuck?)"
+
+      - alert: SagaTooSlow
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(orders_saga_duration_seconds_bucket[5m]))) > 5
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "p95 end-to-end order saga above 5 s"
+
+      - alert: KafkaConsumerLagGrowing
+        expr: max by (application) (kafka_consumer_fetch_manager_records_lag_max) > 1000
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.application }}: consumer lag above 1000 records"
+
+      - alert: OrdersRejectedSpike
+        expr: |
+          sum(rate(orders_finished_total{outcome="rejected"}[10m]))
+            / clamp_min(sum(rate(orders_finished_total[10m])), 0.001) > 0.3
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "More than 30% of orders end rejected"

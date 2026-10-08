@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: payment-service
+  config:
+    import: classpath:platform-defaults.yml
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/payments}
+  kafka:
+    consumer:
+      group-id: payment-service
+
+server:
+  port: 8083
+
+payment:
+  max-amount: ${PAYMENT_MAX_AMOUNT:1000}

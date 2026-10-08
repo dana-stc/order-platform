@@ -1,0 +1,22 @@
+grafana:
+  adminPassword: admin            # dev only
+  service:
+    type: NodePort
+    nodePort: 30030
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+  additionalDataSources:
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.observability.svc.cluster.local:3200
+      jsonData:
+        nodeGraph: {enabled: true}
+prometheus:
+  prometheusSpec:
+    # discover PodMonitors / PrometheusRules from any namespace, not only those labelled with this release
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false

@@ -1,0 +1,33 @@
+# Synced by ArgoCD (see /argocd). The CD workflow rewrites the image tags below with the commit SHA.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - pdb.yaml
+images:
+  # Replace dana-stc with your GitHub user/org (lowercase). CI runs `kustomize edit set image` on these entries.
+  - {name: order-platform/api-gateway, newName: ghcr.io/dana-stc/api-gateway, newTag: latest}
+  - {name: order-platform/order-service, newName: ghcr.io/dana-stc/order-service, newTag: latest}
+  - {name: order-platform/inventory-service, newName: ghcr.io/dana-stc/inventory-service, newTag: latest}
+  - {name: order-platform/payment-service, newName: ghcr.io/dana-stc/payment-service, newTag: latest}
+  - {name: order-platform/notification-service, newName: ghcr.io/dana-stc/notification-service, newTag: latest}
+patches:
+  # Two replicas minimum everywhere: survive a node drain and a rolling update without downtime.
+  - target: {kind: HorizontalPodAutoscaler}
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 2
+      - op: replace
+        path: /spec/maxReplicas
+        value: 10
+  - target: {kind: Deployment}
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+  - target: {kind: ConfigMap, name: platform-config}
+    patch: |-
+      - op: replace
+        path: /data/TRACING_SAMPLING
+        value: "0.1"

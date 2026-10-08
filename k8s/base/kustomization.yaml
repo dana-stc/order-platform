@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: order-platform
+resources:
+  - namespace.yaml
+  - config.yaml
+  - postgres.yaml
+  - kafka.yaml
+  - network-policy.yaml
+  - api-gateway.yaml
+  - order-service.yaml
+  - inventory-service.yaml
+  - payment-service.yaml
+  - notification-service.yaml
+configMapGenerator:
+  - name: postgres-init
+    files:
+      - postgres-init.sql
+generatorOptions:
+  disableNameSuffixHash: true

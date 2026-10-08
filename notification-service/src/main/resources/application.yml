@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: notification-service
+  config:
+    import: classpath:platform-defaults.yml
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/notifications}
+  kafka:
+    consumer:
+      group-id: notification-service
+
+server:
+  port: 8084

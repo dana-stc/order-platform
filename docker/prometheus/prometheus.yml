@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # Services run from the IDE / mvn on the host
+  - job_name: services-host
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - host.docker.internal:8080
+          - host.docker.internal:8081
+          - host.docker.internal:8082
+          - host.docker.internal:8083
+          - host.docker.internal:8084
+
+  # Services running as containers (compose profile "apps")
+  - job_name: services-compose
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - api-gateway:8080
+          - order-service:8081
+          - inventory-service:8082
+          - payment-service:8083
+          - notification-service:8084

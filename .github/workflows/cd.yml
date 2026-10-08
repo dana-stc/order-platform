@@ -1,0 +1,61 @@
+name: CD
+
+# Runs after CI succeeded on main: build images with Jib (no Dockerfile, no Docker daemon needed),
+# push them to GHCR, scan them, then commit the new tags to the GitOps overlay. ArgoCD deploys from there.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write      # commit the new image tags
+  packages: write      # push to GHCR
+
+jobs:
+  publish-and-bump:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ghcr.io/${{ github.repository_owner }}
+      TAG: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Build and push images (multi-service, Jib)
+        run: |
+          REGISTRY_LC=$(echo "$REGISTRY" | tr '[:upper:]' '[:lower:]')
+          ./mvnw -B -ntp -DskipTests -pl api-gateway,order-service,inventory-service,payment-service,notification-service -am \
+            package jib:build \
+            -Dimage.registry=$REGISTRY_LC -Dimage.tag=$TAG \
+            -Djib.to.auth.username=${{ github.actor }} -Djib.to.auth.password=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan the pushed images (Trivy)
+        run: |
+          REGISTRY_LC=$(echo "$REGISTRY" | tr '[:upper:]' '[:lower:]')
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          for svc in api-gateway order-service inventory-service payment-service notification-service; do
+            trivy image --severity CRITICAL --ignore-unfixed --exit-code 1 $REGISTRY_LC/$svc:$TAG
+          done
+
+      - name: Bump image tags in k8s/overlays/prod
+        run: |
+          REGISTRY_LC=$(echo "$REGISTRY" | tr '[:upper:]' '[:lower:]')
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          cd k8s/overlays/prod
+          for svc in api-gateway order-service inventory-service payment-service notification-service; do
+            ../../../kustomize edit set image order-platform/$svc=$REGISTRY_LC/$svc:$TAG
+          done
+          rm -f ../../../kustomize
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(deploy): release $TAG" || echo "nothing to commit"
+          git push

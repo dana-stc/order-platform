@@ -1,0 +1,10 @@
+# helm install tempo grafana/tempo   (single-binary mode, enough for dev/staging)
+tempo:
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318
+  retention: 24h
+persistence:
+  enabled: false
