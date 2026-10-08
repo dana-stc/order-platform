@@ -28,7 +28,7 @@ jobs:
         run: ./mvnw -B -ntp verify
       - name: Publish test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: surefire-reports
           path: "**/target/surefire-reports/*.xml"
